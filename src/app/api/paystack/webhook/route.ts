@@ -1,12 +1,15 @@
-// src/app/api/paystack/webhook/route.ts - Auto-update bill even if browser closed
+// src/app/api/paystack/webhook/route.ts - Auto-update bill even if browser closed + Vercel logs fix
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 function getSupabaseAdmin() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY! // Use SERVICE ROLE, not anon
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }
 
@@ -16,7 +19,7 @@ function getRealAmount(amount: number) {
 }
 
 export async function POST(req: NextRequest) {
-  const secret = process.env.PAYSTACK_SECRET_KEY; // sk_test_xxx
+  const secret = process.env.PAYSTACK_SECRET_KEY;
   if (!secret) return NextResponse.json({ error: "Missing PAYSTACK_SECRET_KEY" }, { status: 500 });
 
   const rawBody = await req.text();
@@ -31,21 +34,20 @@ export async function POST(req: NextRequest) {
 
   const event = JSON.parse(rawBody);
   
-  // Only handle successful charges
   if (event.event !== "charge.success") {
     return NextResponse.json({ status: "ignored", event: event.event });
   }
 
   const data = event.data;
   const reference = data.reference;
-  const amountGHS = Number(data.amount) / 100; // Paystack sends pesewas
+  const amountGHS = Number(data.amount) / 100;
   const metadata = data.metadata || {};
   const billDbId = metadata.bill_db_id;
   const payerPhone = metadata.payer_phone || data.customer?.phone || "";
   const payerName = metadata.payer_name || `${data.customer?.first_name || ""} ${data.customer?.last_name || ""}`.trim();
   const payerEmail = data.customer?.email || "";
 
-  // 2. Verify transaction with Paystack API (double-check)
+  // 2. Double verify with Paystack API
   try {
     const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
       headers: { Authorization: `Bearer ${secret}` }
@@ -56,12 +58,11 @@ export async function POST(req: NextRequest) {
     }
   } catch (e) {
     console.error("Paystack verify error", e);
-    // Continue anyway - webhook is already signed
   }
 
   const supabase = getSupabaseAdmin();
 
-  // 3. Idempotency: skip if already processed this reference
+  // 3. Idempotency: skip if already processed
   const { data: existing } = await supabase.from("bills").select("paystack_reference").eq("paystack_reference", reference).limit(1);
   if (existing && existing.length > 0) {
     return NextResponse.json({ status: "already_processed" });
@@ -70,7 +71,6 @@ export async function POST(req: NextRequest) {
   // 4. Get bill
   let billIdToUpdate = billDbId;
   if (!billIdToUpdate) {
-    // Fallback: find by bill_id ref
     const { data: found } = await supabase.from("bills").select("id").eq("bill_id", metadata.bill_id).single();
     if (found) billIdToUpdate = found.id;
   }
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
   const newPaid = currentPaid + amountGHS;
   const isCleared = newPaid >= total;
 
-  // 5. Update bill — this is what shows on Home + Admin
+  // 5. Update bill
   const { error: updateError } = await supabase.from("bills").update({
     amount_paid: newPaid,
     payer_name: payerName || "Anonymous Donor",
@@ -123,7 +123,6 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ status: "success", bill: billIdToUpdate, paid: newPaid });
 }
 
-// Paystack pings GET to test webhook URL
 export async function GET() {
   return NextResponse.json({ status: "Webhook alive - use POST with Paystack signature" });
 }
