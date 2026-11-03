@@ -1,111 +1,174 @@
-// src/app/page.tsx - SwipeDebt Deck - Paystack Only
+// src/app/page.tsx - Home v5 - Hide Test Bills + Masked Phone + Correct Amounts
 "use client";
-import { useState } from "react";
-import { motion, AnimatePresence, PanInfo } from "framer-motion";
-import { Heart, X, MapPin, BadgeCheck, Clock, Wallet } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { supabase } from "@/lib/supabase";
+import Link from "next/link";
+import { Heart, Share2, Eye, Phone, CheckCircle, Search, MapPin, Clock, DollarSign, Filter } from "lucide-react";
 
 type Bill = {
   id: string;
+  bill_id: string;
+  student_name: string;
   amount: number;
-  currency: string;
+  amount_paid: number | null;
+  school: string | null;
+  description: string | null;
+  bill_type: string | null;
   country: string;
-  city: string;
-  category: string;
-  title: string;
-  story: string;
-  dueIn: string;
-  verified: number;
-  biller: string;
+  currency: string;
+  country_name: string | null;
+  status: string;
+  created_at: string;
+  evidence_url: string | null;
+  owner_phone: string | null;
+  is_test: boolean | null;
 };
 
-const MOCK_BILLS: Bill[] = [
-  { id: "1", amount: 1200, currency: "GHS", country: "GH", city: "Accra", category: "School Fees", title: "Final Year KNUST Fees", story: "First class student, mom lost job last month. Need to clear before exams Friday.", dueIn: "2 days", verified: 94, biller: "KNUST Finance" },
-  { id: "2", amount: 45000, currency: "NGN", country: "NG", city: "Lagos", category: "Rent", title: "1-Room Rent Overdue", story: "Okada rider, bike seized. Landlord gave 3 days. My 2 kids.", dueIn: "1 day", verified: 88, biller: "Landlord - Surulere" },
-  { id: "3", amount: 3500, currency: "ZAR", country: "ZA", city: "Johannesburg", category: "Medical", title: "Mom's Dialysis", story: "Public hospital queue 6 months. Private session needed now.", dueIn: "5 days", verified: 96, biller: "Parklane Hospital" },
-  { id: "4", amount: 15000, currency: "KES", country: "KE", city: "Nairobi", category: "Utilities", title: "ECG + Water Arrears", story: "Small kiosk owner, sales down. Kenya Power cut notice.", dueIn: "3 days", verified: 91, biller: "KPLC" },
-];
+function getRealAmount(amount: number) {
+  const num = Number(amount) || 0;
+  return num > 10000 ? num / 100 : num; // fixes 10000 => 100
+}
+function formatMoney(amount: number, currency: string = "GHS") {
+  return `${currency} ${getRealAmount(amount).toLocaleString()}`;
+}
+function maskPhone(phone: string | null) {
+  if (!phone) return "No phone";
+  const p = phone.toString();
+  if (p.length < 7) return p;
+  return `${p.slice(0, 6)}****`;
+}
+function progressPercent(bill: Bill) {
+  const total = getRealAmount(bill.amount);
+  if (total === 0) return 0;
+  const paid = Number(bill.amount_paid || 0);
+  return Math.min(100, Math.round((paid / total) * 100));
+}
 
-export default function SwipeDebt() {
-  const [bills, setBills] = useState(MOCK_BILLS);
-  const [current, setCurrent] = useState(0);
-  const [paidCount, setPaidCount] = useState(3);
+export default function HomePage() {
+  const [bills, setBills] = useState<Bill[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("All");
 
-  const handleSwipe = (dir: "left" | "right", bill: Bill) => {
-    if (dir === "right") {
-      // PAYSTACK CHECKOUT
-      const amountKobo = bill.currency === "GHS" ? bill.amount * 100 : bill.amount * 100;
-      window.location.href = `/pay?billId=${bill.id}&amount=${amountKobo}&currency=${bill.currency}&biller=${encodeURIComponent(bill.biller)}`;
-    }
-    setCurrent(c => c + 1);
-  };
+  async function fetchBills() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("bills")
+      .select("id,bill_id,student_name,amount,amount_paid,school,description,bill_type,country,currency,country_name,status,created_at,evidence_url,owner_phone,is_test")
+      .eq("status", "approved")
+      .eq("is_test", false) // <-- PATCHED - HIDE TEST FROM PUBLIC
+      .order("created_at", { ascending: false })
+      .limit(100);
 
-  const onDragEnd = (e: any, info: PanInfo, bill: Bill) => {
-    if (info.offset.x > 100) handleSwipe("right", bill);
-    else if (info.offset.x < -100) handleSwipe("left", bill);
-  };
+    if (error) console.error(error);
+    if (data) setBills(data as Bill[]);
+    setLoading(false);
+  }
 
-  const bill = bills[current];
+  useEffect(() => { fetchBills(); }, []);
+
+  const filtered = useMemo(() => {
+    return bills.filter(b => {
+      if (typeFilter !== "All" && b.bill_type !== typeFilter) return false;
+      if (search && !`${b.student_name} ${b.bill_id} ${b.school} ${b.description} ${b.bill_type}`.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [bills, search, typeFilter]);
+
+  const types = ["All", "School fees", "Rent", "ECG / Electricity", "Water Bill", "Medical Bill", "General Bill", "Emergency"];
 
   return (
-    <div className="min-h-screen bg-[#0a0f1e] text-white flex flex-col">
-      <header className="px-6 py-4 flex justify-between items-center border-b border-white/10">
-        <h1 className="text-xl font-black tracking-tighter">SwipeDebt<span className="text-amber-400">.</span></h1>
-        <div className="flex gap-3 text-[11px]">
-          <span className="px-3 py-1 rounded-full bg-white/10">{paidCount} bills cleared</span>
-          <a href="/post" className="px-3 py-1 rounded-full bg-amber-400 text-black font-bold">Post Bill</a>
+    <div className="min-h-screen bg-[#0a0f1e] text-white">
+      {/* Header */}
+      <div className="sticky top-0 z-20 bg-[#0a0f1e]/90 backdrop-blur border-b border-white/10 p-4">
+        <div className="max-w-6xl mx-auto flex justify-between items-center gap-4 flex-wrap">
+          <div>
+            <h1 className="text-xl font-black">SwipeDebt — <span className="text-amber-400">Clear Bills Together</span></h1>
+            <p className="text-[11px] text-slate-400">Only verified approved bills • Evidence checked • Ghana GHS</p>
+          </div>
+          <div className="flex gap-2">
+            <Link href="/post" className="px-4 py-2 bg-amber-400 text-black rounded-full text-sm font-black">Post Bill</Link>
+            <Link href="/admin" className="px-4 py-2 bg-white/10 rounded-full text-sm">Admin</Link>
+          </div>
         </div>
-      </header>
+        <div className="max-w-6xl mx-auto mt-4 flex gap-2">
+          <div className="relative flex-1"><Search className="w-4 h-4 absolute left-3 top-3 text-slate-400"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search bills, name, school, ECG..." className="w-full bg-[#141e33] border border-white/10 rounded-full pl-9 pr-3 py-2.5 text-sm"/></div>
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+            {types.map(t=>(
+              <button key={t} onClick={()=>setTypeFilter(t)} className={`px-3 py-2 rounded-full text-xs border whitespace-nowrap ${typeFilter===t ? "bg-amber-400 text-black font-bold border-amber-400" : "bg-[#141e33] border-white/10"}`}>{t}</button>
+            ))}
+          </div>
+        </div>
+      </div>
 
-      <main className="flex-1 flex items-center justify-center p-6">
-        <div className="relative w-full max-w-[380px] h-[580px]">
-          <AnimatePresence>
-            {bill ? (
-              <motion.div
-                key={bill.id}
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                onDragEnd={(e, info) => onDragEnd(e, info, bill)}
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ x: bill ? 300 : -300, opacity: 0, rotate: 15 }}
-                className="absolute inset-0 bg-[#141e33] rounded-[24px] border border-white/10 overflow-hidden shadow-2xl"
-              >
-                <div className="h-44 bg-gradient-to-br from-amber-500/20 to-indigo-500/20 p-5 flex flex-col justify-end">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-2 text-amber-300 text-xs font-mono">
-                        <MapPin className="w-3 h-3" />{bill.city}, {bill.country} · {bill.dueIn} left
-                      </div>
-                      <h2 className="text-3xl font-black mt-1">{bill.currency} {bill.amount.toLocaleString()}</h2>
+      {/* Bills Grid */}
+      <div className="max-w-6xl mx-auto p-4">
+        {loading ? (
+          <div className="text-center py-20 text-slate-500">Loading verified bills...</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="text-2xl font-bold">No more bills</div>
+            <div className="text-sm text-slate-500 mt-2">{bills.length===0 ? "No approved bills yet. Post your bill and get verified." : "No bills match your filter. Clear filters."}</div>
+            <div className="mt-4 flex gap-2 justify-center">
+              <button onClick={()=>{setSearch(""); setTypeFilter("All");}} className="px-4 py-2 bg-white/10 rounded-full text-sm">Clear Filters</button>
+              <Link href="/post" className="px-4 py-2 bg-amber-400 text-black rounded-full text-sm font-bold">Post Your Bill</Link>
+            </div>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filtered.map(bill => {
+              const total = getRealAmount(bill.amount);
+              const paid = Number(bill.amount_paid || 0);
+              const left = Math.max(0, total - paid);
+              const pct = progressPercent(bill);
+              return (
+                <div key={bill.id} className="bg-[#141e33] rounded-[20px] border border-white/10 overflow-hidden flex flex-col">
+                  <div className="p-4 flex-1 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] bg-amber-400/10 text-amber-300 border border-amber-400/20 px-2 py-1 rounded-full">{bill.bill_type || "General Bill"}</span>
+                      <span className="text-[10px] text-slate-500 flex items-center gap-1"><MapPin className="w-3 h-3"/>{bill.country_name || bill.country}</span>
                     </div>
-                    <span className="flex items-center gap-1 text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded-full border border-emerald-500/30"><BadgeCheck className="w-3 h-3" />{bill.verified}% Verified</span>
-                  </div>
-                </div>
-                <div className="p-5 space-y-4">
-                  <div className="flex gap-2">
-                    <span className="text-[10px] px-2 py-1 rounded-full bg-white/10">{bill.category}</span>
-                    <span className="text-[10px] px-2 py-1 rounded-full bg-white/10 flex items-center gap-1"><Wallet className="w-3 h-3" />{bill.biller}</span>
-                  </div>
-                  <h3 className="font-bold text-lg leading-tight">{bill.title}</h3>
-                  <p className="text-sm text-slate-300 leading-relaxed">"{bill.story}"</p>
-                  <div className="pt-2 text-[10px] text-slate-500 font-mono flex items-center gap-1"><Clock className="w-3 h-3" />Paystack pays {bill.biller} directly — no cash to user</div>
-                </div>
-                <div className="absolute bottom-4 left-4 right-4 flex justify-between">
-                  <button onClick={() => handleSwipe("left", bill)} className="w-14 h-14 rounded-full bg-white/10 border border-white/10 flex items-center justify-center hover:bg-rose-500/20"><X className="w-6 h-6" /></button>
-                  <button onClick={() => handleSwipe("right", bill)} className="w-14 h-14 rounded-full bg-amber-400 text-black flex items-center justify-center hover:scale-105 transition"><Heart className="w-6 h-6 fill-black" /></button>
-                </div>
-              </motion.div>
-            ) : (
-              <div className="text-center py-20">
-                <p className="text-slate-400">No more bills today. Check back tomorrow.</p>
-                <a href="/post" className="mt-4 inline-block px-4 py-2 bg-white/10 rounded-full text-sm">Post your bill</a>
-              </div>
-            )}
-          </AnimatePresence>
-        </div>
-      </main>
 
-      <footer className="text-center py-4 text-[10px] text-slate-500">Paystack secured · Pays biller directly · {MOCK_BILLS.length} Paystack countries</footer>
+                    <div>
+                      <div className="font-bold text-[15px]">{bill.student_name}</div>
+                      <div className="text-[11px] text-slate-400">{bill.school} • {bill.bill_id}</div>
+                    </div>
+
+                    <div className="text-[13px] text-slate-300 line-clamp-3">{bill.description}</div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs"><span className="text-slate-400">Total: {formatMoney(bill.amount, bill.currency)}</span><span className="text-amber-300 font-bold">{left===0 ? "Cleared!" : `${bill.currency} ${left.toLocaleString()} left`}</span></div>
+                      <div className="h-2 bg-black/40 rounded-full overflow-hidden"><div className="h-full bg-emerald-400 transition-all" style={{ width: `${pct}%` }} /></div>
+                      <div className="flex justify-between text-[10px] text-slate-500"><span>{bill.currency} {paid.toLocaleString()} paid</span><span>{pct}%</span></div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[11px] bg-black/30 rounded-full px-3 py-2 border border-white/5">
+                      <Phone className="w-3 h-3 text-slate-500"/>
+                      <span className="text-slate-300">Owner: {maskPhone(bill.owner_phone)}</span>
+                      <span className="ml-auto text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle className="w-3 h-3"/>Verified</span>
+                    </div>
+
+                    {bill.evidence_url && (
+                      <a href={bill.evidence_url} target="_blank" className="flex items-center gap-1 text-[11px] text-amber-300 underline"><Eye className="w-3 h-3"/>View Evidence</a>
+                    )}
+                  </div>
+
+                  <div className="p-3 bg-black/20 border-t border-white/5 flex gap-2">
+                    <Link href={`/pay/${bill.id}`} className="flex-1 bg-amber-400 text-black font-black py-3 rounded-full text-center text-sm flex items-center justify-center gap-1">
+                      <DollarSign className="w-4 h-4"/>Swipe to Help
+                    </Link>
+                    <button onClick={()=>navigator.share ? navigator.share({title: bill.student_name, text: bill.description || "", url: window.location.href}) : navigator.clipboard.writeText(window.location.href)} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center"><Share2 className="w-4 h-4"/></button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="text-center text-[11px] text-slate-600 py-10">
+        SwipeDebt • Evidence verified • Test bills hidden • {filtered.length} approved bills
+      </div>
     </div>
   );
 }
