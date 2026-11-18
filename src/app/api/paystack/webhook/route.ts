@@ -1,7 +1,7 @@
 // src/app/api/paystack/webhook/route.ts - Auto-update bill even if browser closed + Vercel logs fix
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
