@@ -221,7 +221,7 @@ setEvidenceFile(file);
 setPreview(file.type === "application/pdf" ? "pdf" : URL.createObjectURL(file));
 setUploading(true);
 try {
-const fileName = ${Date.now()}-${file.name.replace(/\s/g, "_")};
+const fileName = Date.now() + "-" + file.name.replace(/\s/g, "_");
 const { error: upErr } = await supabase.storage.from("evidence").upload(fileName, file);
 if (upErr) throw upErr;
 const { data: urlData } = supabase.storage.from("evidence").getPublicUrl(fileName);
