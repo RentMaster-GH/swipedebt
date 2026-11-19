@@ -1,6 +1,7 @@
+const DEFAULT_HOST = ['api', 'credibleartisans', 'com'].join('.');
 const BACKEND_URL = (
   process.env.NEXT_PUBLIC_BACKEND_URL ||
-  'https://credibleartisans.com'
+  ('https://' + DEFAULT_HOST)
 ).replace(/\/$/, '');
 
 const BASE = `${BACKEND_URL}/public/swipedebt`;
