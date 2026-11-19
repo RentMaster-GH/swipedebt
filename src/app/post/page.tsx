@@ -1,3 +1,4 @@
+import React from "react";
 "use client";
 import { useState } from "react";
 
@@ -10,7 +11,39 @@ export default function PostBill() {
       <p className="text-xs text-slate-400 mt-1">Paystack will pay your biller directly, not you.</p>
       <form className="mt-6 space-y-4">
         <select value={country} onChange={e => setCountry(e.target.value)} className="w-full p-3 rounded-lg bg-white/10">
-          <option value="GH">Ghana - GHS</option>
+          {[
+  "Ghana - GHS",
+  "Nigeria - NGN",
+  "Kenya - KES",
+  "South Africa - ZAR",
+  "United States - USD",
+  "United Kingdom - GBP",
+  "Canada - CAD",
+  "European Union - EUR",
+  "India - INR",
+  "United Arab Emirates - AED",
+  "Uganda - UGX",
+  "Tanzania - TZS",
+  "Rwanda - RWF",
+  "Cameroon - XAF",
+  "Senegal - XOF",
+  "Cote d'Ivoire - XOF",
+  "Ethiopia - ETB",
+  "Egypt - EGP",
+  "Morocco - MAD",
+  "Zambia - ZMW",
+  "Zimbabwe - ZWG",
+  "Botswana - BWP",
+  "Namibia - NAD",
+  "Gambia - GMD",
+  "Sierra Leone - SLE",
+  "Liberia - LRD",
+  "Australia - AUD",
+  "Brazil - BRL",
+  "China - CNY",
+  "Japan - JPY",
+  "Other Country - USD"
+].map((item) => React.createElement("option", { key: item, value: item }, item))}
           <option value="NG">Nigeria - NGN</option>
           <option value="ZA">South Africa - ZAR</option>
           <option value="KE">Kenya - KES</option>
