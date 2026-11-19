@@ -308,10 +308,10 @@ onChange={(e) => setForm({ ...form, countryCode: e.target.value })}
 className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-3 text-sm"
 >
 {COUNTRIES.map((c) => (
-
-{c.name} - {c.currency} ({c.code})
-
-))}
+                <option key={c.code} value={c.code}>
+                  {c.name} - {c.currency} ({c.code})
+                </option>
+              ))}
 
 Bill Type
 <select
