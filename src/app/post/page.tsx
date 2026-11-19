@@ -261,7 +261,7 @@ const isFormValid = !missingReason;
 async function handleSubmit() {
 setError("");
 if (missingReason) {
-setError(Please complete: ${missingReason});
+setError("Please complete: " + missingReason);
 return;
 }
 setLoading(true);
