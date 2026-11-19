@@ -285,7 +285,7 @@ owner_phone: cleanPreviewPhone,
 is_test: false,
 });
 if (insertErr) throw insertErr;
-alert(Bill posted! Admin will verify. Owner phone ${cleanPreviewPhone} saved for contact.);
+alert("Bill posted! Admin will verify. Owner phone +" + cleanPreviewPhone + " saved for contact.");
 router.push("/");
 } catch (err: any) {
 setError(err.message);
