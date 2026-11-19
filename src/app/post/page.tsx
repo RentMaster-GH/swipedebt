@@ -221,7 +221,7 @@ setEvidenceFile(file);
 setPreview(file.type === "application/pdf" ? "pdf" : URL.createObjectURL(file));
 setUploading(true);
 try {
-const fileName = Date.now() + "-" + file.name.replace(/\s/g, "_");
+const fileName = ${Date.now()}-${file.name.replace(/\s/g, "_")};
 const { error: upErr } = await supabase.storage.from("evidence").upload(fileName, file);
 if (upErr) throw upErr;
 const { data: urlData } = supabase.storage.from("evidence").getPublicUrl(fileName);
@@ -261,12 +261,12 @@ const isFormValid = !missingReason;
 async function handleSubmit() {
 setError("");
 if (missingReason) {
-setError("Please complete: " + missingReason);
+setError(Please complete: ${missingReason});
 return;
 }
 setLoading(true);
 try {
-const billRef = selectedCountry.code + "-" + Date.now().toString().slice(-6);
+const billRef = ${selectedCountry.code}-${Date.now().toString().slice(-6)};
 const { error: insertErr } = await supabase.from("bills").insert({
 bill_id: billRef,
 student_name: form.student_name.trim(),
@@ -285,7 +285,7 @@ owner_phone: cleanPreviewPhone,
 is_test: false,
 });
 if (insertErr) throw insertErr;
-alert("Bill posted! Admin will verify. Owner phone +" + cleanPreviewPhone + " saved for contact.");
+alert(Bill posted! Admin will verify. Owner phone ${cleanPreviewPhone} saved for contact.);
 router.push("/");
 } catch (err: any) {
 setError(err.message);
@@ -308,10 +308,10 @@ onChange={(e) => setForm({ ...form, countryCode: e.target.value })}
 className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-3 text-sm"
 >
 {COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name} - {c.currency} ({c.code})
-                </option>
-              ))}
+
+{c.name} - {c.currency} ({c.code})
+
+))}
 
 Bill Type
 <select
@@ -342,7 +342,7 @@ Amount in {selectedCountry.currency} *
 type="number"
 value={form.amount}
 onChange={(e) => setForm({ ...form, amount: e.target.value })}
-placeholder={selectedCountry.currency + " e.g. 100"}
+placeholder={${selectedCountry.currency} e.g. 100}
 min={1}
 className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-3 text-sm"
 />
@@ -357,12 +357,12 @@ Your Phone ({selectedCountry.name}) * — donors/admin can contact you
 <input
 value={form.owner_phone}
 onChange={(e) => setForm({ ...form, owner_phone: e.target.value })}
-placeholder={"+" + selectedCountry.dial + "..."}
+placeholder={+${selectedCountry.dial}...}
 className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-3 text-sm"
 />
 
 {cleanPreviewPhone
-? "Saved as +" + cleanPreviewPhone + " (hidden from public until approved)"
+? Saved as +${cleanPreviewPhone} (hidden from public until approved)
 : "Enter phone number — hidden from public until approved"}
 
 Your Story *
@@ -393,7 +393,7 @@ disabled={!isFormValid || loading}
 onClick={handleSubmit}
 className="w-full py-3.5 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:bg-white/10 disabled:text-slate-500 text-slate-950 font-bold text-sm transition"
 >
-{loading ? "Posting Bill..." : isFormValid ? "Post Bill" : "Post Bill (" + missingReason + ")"}
+{loading ? "Posting Bill..." : isFormValid ? "Post Bill" : Post Bill (${missingReason})}
 <button
 type="button"
 onClick={() => router.push("/")}
