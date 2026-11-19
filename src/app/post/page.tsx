@@ -266,7 +266,7 @@ return;
 }
 setLoading(true);
 try {
-const billRef = ${selectedCountry.code}-${Date.now().toString().slice(-6)};
+const billRef = selectedCountry.code + "-" + Date.now().toString().slice(-6);
 const { error: insertErr } = await supabase.from("bills").insert({
 bill_id: billRef,
 student_name: form.student_name.trim(),
@@ -342,7 +342,7 @@ Amount in {selectedCountry.currency} *
 type="number"
 value={form.amount}
 onChange={(e) => setForm({ ...form, amount: e.target.value })}
-placeholder={${selectedCountry.currency} e.g. 100}
+placeholder={selectedCountry.currency + " e.g. 100"}
 min={1}
 className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-3 text-sm"
 />
@@ -357,12 +357,12 @@ Your Phone ({selectedCountry.name}) * — donors/admin can contact you
 <input
 value={form.owner_phone}
 onChange={(e) => setForm({ ...form, owner_phone: e.target.value })}
-placeholder={+${selectedCountry.dial}...}
+placeholder={"+" + selectedCountry.dial + "..."}
 className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-3 text-sm"
 />
 
 {cleanPreviewPhone
-? Saved as +${cleanPreviewPhone} (hidden from public until approved)
+? "Saved as +" + cleanPreviewPhone + " (hidden from public until approved)"
 : "Enter phone number — hidden from public until approved"}
 
 Your Story *
@@ -393,7 +393,7 @@ disabled={!isFormValid || loading}
 onClick={handleSubmit}
 className="w-full py-3.5 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:bg-white/10 disabled:text-slate-500 text-slate-950 font-bold text-sm transition"
 >
-{loading ? "Posting Bill..." : isFormValid ? "Post Bill" : Post Bill (${missingReason})}
+{loading ? "Posting Bill..." : isFormValid ? "Post Bill" : "Post Bill (" + missingReason + ")"}
 <button
 type="button"
 onClick={() => router.push("/")}
