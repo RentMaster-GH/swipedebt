@@ -145,7 +145,7 @@ class QueryBuilder implements PromiseLike<{ data: any; error: any }> {
         const json = await res.json();
         if (!res.ok) return { data: null, error: { message: json.error || 'Insert failed' } };
         const records = json.records || [];
-        if (this.singleMode !== 'none') return { data: records || null, error: null };
+        if (this.singleMode !== 'none') return { data: records[0] || null, error: null };
         return { data: records, error: null };
       }
 
@@ -166,7 +166,7 @@ class QueryBuilder implements PromiseLike<{ data: any; error: any }> {
           });
           if (patchRes.ok) updated.push(await patchRes.json());
         }
-        if (this.singleMode !== 'none') return { data: updated || null, error: null };
+        if (this.singleMode !== 'none') return { data: updated[0] || null, error: null };
         return { data: updated, error: null };
       }
 
@@ -193,11 +193,11 @@ class QueryBuilder implements PromiseLike<{ data: any; error: any }> {
       }
 
       if (this.singleMode === 'single') {
-        if (!rows) return { data: null, error: { message: 'Row not found' } };
-        return { data: rows, error: null };
+        if (!rows[0]) return { data: null, error: { message: 'Row not found' } };
+        return { data: rows[0], error: null };
       }
       if (this.singleMode === 'maybeSingle') {
-        return { data: rows || null, error: null };
+        return { data: rows[0] || null, error: null };
       }
 
       return { data: rows, error: null };
